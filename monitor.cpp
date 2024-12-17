@@ -41,9 +41,8 @@ bool Monitor::put (int item) {
     }
     sleep(timeout);
     if (store_state + item > capacity) {
-        sleep(timeout);
+        // sleep(timeout);
         producer_failures++;
-        std::cout << "producer: " << item << "\n";
         if (should_consumer_broadcast()){
             consumer_broadcast();
             producer_wait();
@@ -70,9 +69,8 @@ bool Monitor::get (int item) {
         consumer_wait();
     }
     if (store_state - item < 0) {
-        sleep(timeout);
+        // sleep(timeout);
         consumer_failures++;
-        std::cout << "consumer: " << item << "\n";
         if (should_producer_broadcast()) {
             producer_broadcast();
             consumer_wait();
@@ -154,7 +152,7 @@ void Monitor::producer_broadcast() {
 }
 
 bool Monitor::should_producer_broadcast() {
-    return (consumer_failures == consumer_count && producers_waiting == producer_count);
+    return consumer_failures == consumer_count && producers_waiting == producer_count;
 }
 
 bool Monitor::should_consumer_broadcast() {
