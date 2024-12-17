@@ -1,0 +1,143 @@
+#include "monitor.h"
+#include <stdio.h>
+#include <unistd.h>
+
+Monitor::Monitor(int capacity, int producer_count, int consumer_count, int timeout) {
+    pthread_mutex_init(&mutex, NULL);
+    pthread_cond_init(&producer, NULL);
+    pthread_cond_init(&consumer, NULL);
+    this->store_state = 0;
+    this->producers_waiting = 0;
+    this->consumers_waiting = 0;
+    this->consumer_failures = 0;
+    this->producer_failures = 0;
+    this->producer_count = producer_count;
+    this->consumer_count = consumer_count;
+    this->capacity = capacity;
+    this->timeout = timeout;
+    write_state_to_file();
+}
+
+Monitor::~Monitor() {
+    pthread_mutex_destroy(&mutex);
+    pthread_cond_destroy(&producer);
+    pthread_cond_destroy(&consumer);
+}
+
+void Monitor::enter() {
+    pthread_mutex_lock(&mutex);
+}
+
+void Monitor::leave() {
+    pthread_mutex_unlock(&mutex);
+}
+
+bool Monitor::put (int item) {
+    this->enter();
+    while (should_producer_wait()) {
+        producer_wait();
+    }
+    sleep(timeout);
+    if (store_state + item > capacity) {
+        sleep(timeout);
+        producer_failures++;
+        if (should_consumer_signal()){
+            consumer_broadcast();
+        }
+        this->leave();
+        return false;
+    }
+    store_state += item;
+    write_state_to_file();
+    sleep(timeout);
+    if (should_consumer_signal()) {
+        consumer_signal();
+    }
+    producer_failures = 0;
+    this->leave();
+    return true;
+}
+
+bool Monitor::get (int item) {
+    this->enter();
+    while (should_consumer_wait()) {
+        consumer_wait();
+    }
+    if (store_state - item < 0) {
+        sleep(timeout);
+        consumer_failures++;
+        if (should_producer_signal()) {
+            producer_broadcast();
+        }
+        this->leave();
+        return false;
+    }
+    sleep(timeout);
+    store_state -= item;
+    write_state_to_file();
+    sleep(timeout);
+    if (should_producer_signal()) {
+        producer_signal();
+    }
+    consumer_failures = 0;
+    this->leave();
+    return true;
+}
+
+void Monitor::write_state_to_file() {
+    FILE *file = fopen("warehouse.txt", "w");
+    fprintf(file, "%d\n", store_state);
+    fflush(file);
+    fclose(file);
+}
+
+int Monitor::get_state() {
+    return store_state;
+}
+
+
+bool Monitor::should_producer_wait() {
+    return store_state > capacity / 2 && consumer_failures < consumer_count;
+}
+
+bool Monitor::should_consumer_wait() {
+    return store_state <= capacity / 2 && producer_failures < producer_count;
+}
+
+bool Monitor::should_producer_signal() {
+    return store_state <= capacity / 2 || 
+        producer_failures == producer_count;
+}
+
+bool Monitor::should_consumer_signal() {
+    return store_state > capacity / 2 ||
+        consumer_failures == consumer_count;
+}
+
+void Monitor::producer_wait() {
+    producers_waiting++;
+    pthread_cond_wait(&this->producer, &this->mutex);
+    producers_waiting--;
+}
+
+void Monitor::consumer_wait() {
+    consumers_waiting++;
+    pthread_cond_wait(&this->consumer, &this->mutex);
+    consumers_waiting--;
+}
+
+void Monitor::producer_signal() {
+    pthread_cond_signal(&this->producer);
+}
+
+void Monitor::consumer_signal() {
+    pthread_cond_signal(&this->consumer);
+}
+
+void Monitor::consumer_broadcast() {
+    pthread_cond_broadcast(&this->consumer);
+}
+
+void Monitor::producer_broadcast() {
+    pthread_cond_broadcast(&this->producer);
+}
