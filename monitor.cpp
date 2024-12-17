@@ -1,6 +1,7 @@
 #include "monitor.h"
 #include <stdio.h>
 #include <unistd.h>
+#include <iostream>
 
 Monitor::Monitor(int capacity, int producer_count, int consumer_count, int timeout) {
     pthread_mutex_init(&mutex, NULL);
@@ -33,6 +34,7 @@ void Monitor::leave() {
 }
 
 bool Monitor::put (int item) {
+    sleep(timeout);
     this->enter();
     while (should_producer_wait()) {
         producer_wait();
@@ -41,17 +43,20 @@ bool Monitor::put (int item) {
     if (store_state + item > capacity) {
         sleep(timeout);
         producer_failures++;
-        if (should_consumer_signal()){
+        std::cout << "producer: " << item << "\n";
+        if (should_consumer_broadcast()){
             consumer_broadcast();
+            producer_wait();
         }
         this->leave();
+        sleep(timeout);
         return false;
     }
     store_state += item;
     write_state_to_file();
     sleep(timeout);
     if (should_consumer_signal()) {
-        consumer_signal();
+        consumer_broadcast();
     }
     producer_failures = 0;
     this->leave();
@@ -59,6 +64,7 @@ bool Monitor::put (int item) {
 }
 
 bool Monitor::get (int item) {
+    sleep(timeout);
     this->enter();
     while (should_consumer_wait()) {
         consumer_wait();
@@ -66,10 +72,13 @@ bool Monitor::get (int item) {
     if (store_state - item < 0) {
         sleep(timeout);
         consumer_failures++;
-        if (should_producer_signal()) {
+        std::cout << "consumer: " << item << "\n";
+        if (should_producer_broadcast()) {
             producer_broadcast();
+            consumer_wait();
         }
         this->leave();
+        sleep(timeout);
         return false;
     }
     sleep(timeout);
@@ -77,7 +86,7 @@ bool Monitor::get (int item) {
     write_state_to_file();
     sleep(timeout);
     if (should_producer_signal()) {
-        producer_signal();
+        producer_broadcast();
     }
     consumer_failures = 0;
     this->leave();
@@ -97,10 +106,12 @@ int Monitor::get_state() {
 
 
 bool Monitor::should_producer_wait() {
+    // return store_state > capacity / 2;
     return store_state > capacity / 2 && consumer_failures < consumer_count;
 }
 
 bool Monitor::should_consumer_wait() {
+    // return store_state <= capacity / 2;
     return store_state <= capacity / 2 && producer_failures < producer_count;
 }
 
@@ -141,3 +152,12 @@ void Monitor::consumer_broadcast() {
 void Monitor::producer_broadcast() {
     pthread_cond_broadcast(&this->producer);
 }
+
+bool Monitor::should_producer_broadcast() {
+    return (consumer_failures == consumer_count && producers_waiting == producer_count);
+}
+
+bool Monitor::should_consumer_broadcast() {
+    return producer_failures == producer_count && consumers_waiting == consumer_count;
+}
+
