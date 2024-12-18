@@ -20,4 +20,4 @@ producer.o: producer.cpp producer.h
 	$(CC) $(CFLAGS) -c producer.cpp -o producer.o
 
 clean:
-	rm -f *.o main
+	rm -f *.o main *.txt
