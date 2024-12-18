@@ -5,8 +5,8 @@
 
 Monitor::Monitor(int capacity, int producer_count, int consumer_count, int timeout) {
     pthread_mutex_init(&mutex, NULL);
-    pthread_cond_init(&producer, NULL);
-    pthread_cond_init(&consumer, NULL);
+    pthread_cond_init(&producer_cond, NULL);
+    pthread_cond_init(&consumer_cond, NULL);
     this->store_state = 0;
     this->producers_waiting = 0;
     this->consumers_waiting = 0;
@@ -21,8 +21,8 @@ Monitor::Monitor(int capacity, int producer_count, int consumer_count, int timeo
 
 Monitor::~Monitor() {
     pthread_mutex_destroy(&mutex);
-    pthread_cond_destroy(&producer);
-    pthread_cond_destroy(&consumer);
+    pthread_cond_destroy(&producer_cond);
+    pthread_cond_destroy(&consumer_cond);
 }
 
 void Monitor::enter() {
@@ -33,14 +33,14 @@ void Monitor::leave() {
     pthread_mutex_unlock(&mutex);
 }
 
-bool Monitor::put (int item) {
+bool Monitor::put (producer* prod) {
     sleep(timeout);
     this->enter();
     while (should_producer_wait()) {
         producer_wait();
     }
     sleep(timeout);
-    if (store_state + item > capacity) {
+    if (store_state + prod->get_batch() > capacity) {
         // sleep(timeout);
         producer_failures++;
         if (should_consumer_broadcast()){
@@ -51,7 +51,7 @@ bool Monitor::put (int item) {
         sleep(timeout);
         return false;
     }
-    store_state += item;
+    store_state += prod->get_batch();
     write_state_to_file();
     sleep(timeout);
     if (should_consumer_signal()) {
@@ -62,13 +62,13 @@ bool Monitor::put (int item) {
     return true;
 }
 
-bool Monitor::get (int item) {
+bool Monitor::get (consumer* cons) {
     sleep(timeout);
     this->enter();
     while (should_consumer_wait()) {
         consumer_wait();
     }
-    if (store_state - item < 0) {
+    if (store_state - cons->get_batch() < 0) {
         // sleep(timeout);
         consumer_failures++;
         if (should_producer_broadcast()) {
@@ -80,7 +80,7 @@ bool Monitor::get (int item) {
         return false;
     }
     sleep(timeout);
-    store_state -= item;
+    store_state -= cons->get_batch();
     write_state_to_file();
     sleep(timeout);
     if (should_producer_signal()) {
@@ -125,30 +125,30 @@ bool Monitor::should_consumer_signal() {
 
 void Monitor::producer_wait() {
     producers_waiting++;
-    pthread_cond_wait(&this->producer, &this->mutex);
+    pthread_cond_wait(&this->producer_cond, &this->mutex);
     producers_waiting--;
 }
 
 void Monitor::consumer_wait() {
     consumers_waiting++;
-    pthread_cond_wait(&this->consumer, &this->mutex);
+    pthread_cond_wait(&this->consumer_cond, &this->mutex);
     consumers_waiting--;
 }
 
 void Monitor::producer_signal() {
-    pthread_cond_signal(&this->producer);
+    pthread_cond_signal(&this->producer_cond);
 }
 
 void Monitor::consumer_signal() {
-    pthread_cond_signal(&this->consumer);
+    pthread_cond_signal(&this->consumer_cond);
 }
 
 void Monitor::consumer_broadcast() {
-    pthread_cond_broadcast(&this->consumer);
+    pthread_cond_broadcast(&this->consumer_cond);
 }
 
 void Monitor::producer_broadcast() {
-    pthread_cond_broadcast(&this->producer);
+    pthread_cond_broadcast(&this->producer_cond);
 }
 
 bool Monitor::should_producer_broadcast() {

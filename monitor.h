@@ -2,11 +2,13 @@
 
 #include <semaphore.h>
 #include <pthread.h>
+#include "producer.h"
+#include "consumer.h"
 
 class Monitor {
     pthread_mutex_t mutex;
-    pthread_cond_t producer;
-    pthread_cond_t consumer;
+    pthread_cond_t producer_cond;
+    pthread_cond_t consumer_cond;
     int store_state;
     int capacity;
     int producers_waiting;
@@ -21,8 +23,8 @@ public:
     ~Monitor();
     void enter();
     void leave();
-    bool put(int item);
-    bool get(int item);
+    bool put(producer* prod);
+    bool get(consumer* cons);
     void write_state_to_file();
     int get_state();
     bool should_producer_wait();

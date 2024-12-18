@@ -24,7 +24,7 @@ void* producer_thread(void *arg) {
             status = false;
         }
         prod->producer_write_try_info_to_file();
-        status = monitor->put(prod->get_batch());
+        status = monitor->put(prod);
         prod->producer_write_to_file(monitor->get_state(), status);
         sleep(1);
     }
@@ -44,7 +44,7 @@ void* consumer_thread(void *arg) {
             status = false;
         }
         cons->consumer_write_try_info_to_file();
-        status = monitor->get(cons->get_batch());
+        status = monitor->get(cons);
         cons->consumer_write_to_file(monitor->get_state(), status);
         sleep(1);
     }
