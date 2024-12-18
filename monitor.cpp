@@ -113,12 +113,10 @@ int Monitor::get_state() {
 
 
 bool Monitor::should_producer_wait() {
-    // return store_state > capacity / 2;
     return store_state > capacity / 2;
 }
 
 bool Monitor::should_consumer_wait() {
-    // return store_state <= capacity / 2;
     return store_state <= capacity / 2;
 }
 
@@ -155,20 +153,3 @@ void Monitor::consumer_signal() {
         sem_post(&consumer_cond);
     else leave();
 }
-
-// void Monitor::consumer_broadcast() {
-//     pthread_cond_broadcast(&this->consumer_cond);
-// }
-
-// void Monitor::producer_broadcast() {
-//     pthread_cond_broadcast(&this->producer_cond);
-// }
-
-// bool Monitor::should_producer_broadcast() {
-//     return consumer_failures == consumer_count && producers_waiting == producer_count;
-// }
-
-// bool Monitor::should_consumer_broadcast() {
-//     return producer_failures == producer_count && consumers_waiting == consumer_count;
-// }
-

@@ -31,12 +31,8 @@ public:
     bool should_consumer_wait();
     bool should_producer_signal();
     bool should_consumer_signal();
-    // bool should_producer_broadcast();
-    // bool should_consumer_broadcast();
     void producer_wait();
     void consumer_wait();
     void producer_signal();
     void consumer_signal();
-    // void consumer_broadcast();
-    // void producer_broadcast();
 };
