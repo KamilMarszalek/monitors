@@ -29,7 +29,7 @@ void Monitor::leave() {
     sem_post(&mutex);
 }
 
-bool Monitor::put (producer* prod) {
+bool Monitor::put(producer* prod) {
     enter();
     prod->producer_write_try_info_to_file();
     if (should_producer_wait()) {
@@ -47,6 +47,7 @@ bool Monitor::put (producer* prod) {
         sleep(timeout);
         prod->producer_write_to_file(get_state(), false);
         sleep(timeout);
+        leave(); // d
         return false;
     }
     sleep(timeout);
@@ -60,10 +61,11 @@ bool Monitor::put (producer* prod) {
         producer_signal();
     }
     producer_failures = 0;
+    leave();
     return true;
 }
 
-bool Monitor::get (consumer* cons) {
+bool Monitor::get(consumer* cons) {
     enter();
     cons->consumer_write_try_info_to_file();
     if (should_consumer_wait()) {
@@ -80,6 +82,7 @@ bool Monitor::get (consumer* cons) {
         sleep(timeout);
         cons->consumer_write_to_file(get_state(), false);
         sleep(timeout);
+        leave();
         return false;
     }
     sleep(timeout);
@@ -93,6 +96,7 @@ bool Monitor::get (consumer* cons) {
         consumer_signal();
     }
     consumer_failures = 0;
+    leave();
     return true;
 }
 
@@ -128,6 +132,7 @@ void Monitor::producer_wait() {
     producers_waiting++;
     leave();
     sem_wait(&producer_cond);
+    enter();
     producers_waiting--;
 }
 
@@ -135,17 +140,16 @@ void Monitor::consumer_wait() {
     consumers_waiting++;
     leave();
     sem_wait(&consumer_cond);
+    enter();
     consumers_waiting--;
 }
 
 void Monitor::producer_signal() {
     if (producers_waiting > 0)
         sem_post(&producer_cond);
-    else leave();
 }
 
 void Monitor::consumer_signal() {
     if (consumers_waiting > 0)
         sem_post(&consumer_cond);
-    else leave();
 }
