@@ -109,12 +109,11 @@ int Monitor::get_state() {
 
 
 bool Monitor::should_producer_wait() {
-    // return store_state > capacity / 2 && consumer_failures <= consumer_count;
-    return store_state > capacity / 2;
+    return store_state > capacity / 2 && producers_waiting + consumers_waiting < producer_count + consumer_count - 1;
 }
 
 bool Monitor::should_consumer_wait() {
-    return store_state <= capacity / 2;
+    return store_state <= capacity / 2 && producers_waiting + consumers_waiting < producer_count + consumer_count - 1;
 }
 
 bool Monitor::should_producer_signal() {
