@@ -6,9 +6,9 @@
 #include "consumer.h"
 
 class Monitor {
-    pthread_mutex_t mutex;
-    pthread_cond_t producer_cond;
-    pthread_cond_t consumer_cond;
+    sem_t mutex;
+    sem_t producer_cond;
+    sem_t consumer_cond;
     int store_state;
     int capacity;
     int producers_waiting;
@@ -31,12 +31,12 @@ public:
     bool should_consumer_wait();
     bool should_producer_signal();
     bool should_consumer_signal();
-    bool should_producer_broadcast();
-    bool should_consumer_broadcast();
+    // bool should_producer_broadcast();
+    // bool should_consumer_broadcast();
     void producer_wait();
     void consumer_wait();
     void producer_signal();
     void consumer_signal();
-    void consumer_broadcast();
-    void producer_broadcast();
+    // void consumer_broadcast();
+    // void producer_broadcast();
 };

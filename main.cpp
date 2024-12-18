@@ -23,9 +23,7 @@ void* producer_thread(void *arg) {
             prod->producer_write_produced_to_file();
             status = false;
         }
-        prod->producer_write_try_info_to_file();
         status = monitor->put(prod);
-        prod->producer_write_to_file(monitor->get_state(), status);
         sleep(1);
     }
     return NULL;
@@ -43,9 +41,7 @@ void* consumer_thread(void *arg) {
             cons->consumer_write_consume_to_file();
             status = false;
         }
-        cons->consumer_write_try_info_to_file();
         status = monitor->get(cons);
-        cons->consumer_write_to_file(monitor->get_state(), status);
         sleep(1);
     }
     return NULL;
