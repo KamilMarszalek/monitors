@@ -3,19 +3,15 @@
 #include <unistd.h>
 #include <iostream>
 
-Monitor::Monitor(int capacity, int producer_count, int consumer_count, int timeout) {
+Monitor::Monitor(int capacity, int producer_count, int consumer_count, int timeout) : capacity(capacity), producer_count(producer_count), consumer_count(consumer_count), timeout(timeout) {
     sem_init(&mutex, 0, 1);
     sem_init(&producer_cond, 0, 0);
     sem_init(&consumer_cond, 0, 0);
-    this->store_state = 0;
-    this->producers_waiting = 0;
-    this->consumers_waiting = 0;
-    this->consumer_failures = 0;
-    this->producer_failures = 0;
-    this->producer_count = producer_count;
-    this->consumer_count = consumer_count;
-    this->capacity = capacity;
-    this->timeout = timeout;
+    store_state = 0;
+    producers_waiting = 0;
+    consumers_waiting = 0;
+    consumer_failures = 0;
+    producer_failures = 0;
     write_state_to_file();
 }
 
@@ -34,7 +30,7 @@ void Monitor::leave() {
 }
 
 bool Monitor::put (producer* prod) {
-    this->enter();
+    enter();
     prod->producer_write_try_info_to_file();
     if (should_producer_wait()) {
         sleep(timeout);
@@ -68,7 +64,7 @@ bool Monitor::put (producer* prod) {
 }
 
 bool Monitor::get (consumer* cons) {
-    this->enter();
+    enter();
     cons->consumer_write_try_info_to_file();
     if (should_consumer_wait()) {
         sleep(timeout);
