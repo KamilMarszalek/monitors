@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <iostream>
+#include <iostream>
+#include <fstream>
 
 Monitor::Monitor(int capacity, int producer_count, int consumer_count, int timeout) : capacity(capacity), producer_count(producer_count), consumer_count(consumer_count), timeout(timeout) {
     sem_init(&mutex, 0, 1);
@@ -101,10 +103,13 @@ bool Monitor::get(consumer* cons) {
 }
 
 void Monitor::write_state_to_file() {
-    FILE *file = fopen("warehouse.txt", "w");
-    fprintf(file, "%d\n", store_state);
-    fflush(file);
-    fclose(file);
+    std::ofstream file("warehouse.txt");
+    if (file.is_open()) {
+        file << store_state << "\n";
+        file.flush();
+    } else {
+        std::cerr << "Error opening file for writing: warehouse.txt" << std::endl;
+    }
 }
 
 int Monitor::get_state() {
