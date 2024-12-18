@@ -36,7 +36,7 @@ void Monitor::leave() {
 bool Monitor::put (producer* prod) {
     this->enter();
     prod->producer_write_try_info_to_file();
-    while (should_producer_wait()) {
+    if (should_producer_wait()) {
         sleep(timeout);
         producer_wait();
     }
@@ -70,7 +70,7 @@ bool Monitor::put (producer* prod) {
 bool Monitor::get (consumer* cons) {
     this->enter();
     cons->consumer_write_try_info_to_file();
-    while (should_consumer_wait()) {
+    if (should_consumer_wait()) {
         sleep(timeout);
         consumer_wait();
     }
@@ -113,6 +113,7 @@ int Monitor::get_state() {
 
 
 bool Monitor::should_producer_wait() {
+    // return store_state > capacity / 2 && consumer_failures <= consumer_count;
     return store_state > capacity / 2;
 }
 
@@ -121,7 +122,7 @@ bool Monitor::should_consumer_wait() {
 }
 
 bool Monitor::should_producer_signal() {
-    return store_state <= capacity / 2;
+    return store_state <= capacity / 2 || consumer_failures > 2 * consumer_count;
 }
 
 bool Monitor::should_consumer_signal() {
