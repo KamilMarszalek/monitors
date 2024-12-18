@@ -1,5 +1,7 @@
 #include "consumer.h"
 #include <random>
+#include <fstream>
+#include <iostream>
 
 consumer::consumer(int c, int d, int id) : c(c), d(d), id(id) {
     this->filename = "consumer_" + std::to_string(id) + ".txt";
@@ -20,23 +22,32 @@ int consumer::get_batch() {
 }
 
 void consumer::consumer_write_consume_to_file() {
-    FILE *file = fopen(filename.c_str(), "a");
-    fprintf(file, "Consumed: %d\n", this->batch);
-    fclose(file);
+    std::ofstream file(filename, std::ios::app);
+    if (file.is_open()) {
+        file << "Consumed: " << this->batch << "\n";
+    } else {
+        std::cerr << "Error opening file for writing: " << filename << std::endl;
+    }
 }
 
 void consumer::consumer_write_to_file(int state, bool saved) {
-    FILE *file = fopen(filename.c_str(), "a");
-    if (!saved) {
-        fprintf(file, "Failed to unload: %d\n", batch);
+    std::ofstream file(filename, std::ios::app);
+    if (file.is_open()) {
+        if (!saved) {
+            file << "Failed to unload: " << batch << " | State: " << state << "\n";
+        } else {
+            file << "Successfully unloaded: " << batch << " | New state: " << state << "\n";
+        }
     } else {
-    fprintf(file, "Succesfully unloaded: %d | New state: %d\n", batch, state);
+        std::cerr << "Error opening file for writing: " << filename << std::endl;
     }
-    fclose(file);
 }
 
 void consumer::consumer_write_try_info_to_file() {
-    FILE *file = fopen(filename.c_str(), "a");
-    fprintf(file, "Trying to unload: %d\n", batch);
-    fclose(file);
+    std::ofstream file(filename, std::ios::app);
+    if (file.is_open()) {
+        file << "Trying to unload: " << batch << "\n";
+    } else {
+        std::cerr << "Error opening file for writing: " << filename << std::endl;
+    }
 }

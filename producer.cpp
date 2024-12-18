@@ -1,5 +1,7 @@
 #include "producer.h"
 #include <random>
+#include <fstream>
+#include <iostream>
 
 producer::producer(int a, int b, int id) : a(a), b(b), id(id) {
     this->filename = "producer_" + std::to_string(id) + ".txt";
@@ -20,23 +22,32 @@ int producer::get_batch() {
 }
 
 void producer::producer_write_produced_to_file() {
-    FILE *file = fopen(filename.c_str(), "a");
-    fprintf(file, "Produced: %d\n", this->batch);
-    fclose(file);
+    std::ofstream file(filename, std::ios::app);
+    if (file.is_open()) {
+        file << "Produced: " << this->batch << "\n";
+    } else {
+        std::cerr << "Error opening file for writing: " << filename << "\n";
+    }
 }
 
 void producer::producer_write_to_file(int state, bool saved) {
-    FILE *file = fopen(filename.c_str(), "a");
-    if (!saved) {
-        fprintf(file, "Failed to load: %d\n", batch);
-    } else{
-    fprintf(file, "Succesfully loaded: %d | New state: %d\n", batch, state);
+    std::ofstream file(filename, std::ios::app);
+    if (file.is_open()) {
+        if (!saved) {
+            file << "Failed to load: " << batch << " | State: " << state << "\n";
+        } else {
+            file << "Successfully loaded: " << batch << " | New state: " << state << "\n";
+        }
+    } else {
+        std::cerr << "Error opening file for writing: " << filename << "\n";
     }
-    fclose(file);
 }
 
 void producer::producer_write_try_info_to_file() {
-    FILE *file = fopen(filename.c_str(), "a");
-    fprintf(file, "Trying to load: %d\n", batch);
-    fclose(file);
+    std::ofstream file(filename, std::ios::app);
+    if (file.is_open()) {
+        file << "Trying to load: " << batch << "\n";
+    } else {
+        std::cerr << "Error opening file for writing: " << filename << std::endl;
+    }
 }
