@@ -24,7 +24,7 @@ int producer::get_batch() {
 void producer::producer_write_produced_to_file() {
     std::ofstream file(filename, std::ios::app);
     if (file.is_open()) {
-        file << "Produced: " << this->batch << "\n";
+        file << "Generated: " << this->batch << "\n";
     } else {
         std::cerr << "Error opening file for writing: " << filename << "\n";
     }

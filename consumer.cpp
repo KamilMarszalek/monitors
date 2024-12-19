@@ -24,7 +24,7 @@ int consumer::get_batch() {
 void consumer::consumer_write_consume_to_file() {
     std::ofstream file(filename, std::ios::app);
     if (file.is_open()) {
-        file << "Consumed: " << this->batch << "\n";
+        file << "Generated: " << this->batch << "\n";
     } else {
         std::cerr << "Error opening file for writing: " << filename << std::endl;
     }
