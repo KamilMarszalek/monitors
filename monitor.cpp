@@ -2,8 +2,6 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <iostream>
-#include <iostream>
-#include <fstream>
 
 Monitor::Monitor(int capacity, int producer_count, int consumer_count, int timeout) : capacity(capacity), producer_count(producer_count), consumer_count(consumer_count), timeout(timeout) {
     sem_init(&mutex, 0, 1);
@@ -31,13 +29,12 @@ void Monitor::leave() {
     sem_post(&mutex);
 }
 
-bool Monitor::put(producer* prod) {
+bool Monitor::put (producer* prod) {
     enter();
-    prod->producer_write_try_info_to_file();
     if (should_producer_wait()) {
-        sleep(timeout);
         producer_wait();
     }
+    prod->producer_write_try_info_to_file();
     sleep(timeout);
     if (store_state + prod->get_batch() > capacity) {
         producer_failures++;
@@ -48,11 +45,8 @@ bool Monitor::put(producer* prod) {
         }
         sleep(timeout);
         prod->producer_write_to_file(get_state(), false);
-        sleep(timeout);
-        leave(); // d
         return false;
     }
-    sleep(timeout);
     store_state += prod->get_batch();
     write_state_to_file();
     prod->producer_write_to_file(get_state(), true);
@@ -63,17 +57,16 @@ bool Monitor::put(producer* prod) {
         producer_signal();
     }
     producer_failures = 0;
-    leave();
     return true;
 }
 
-bool Monitor::get(consumer* cons) {
+bool Monitor::get (consumer* cons) {
     enter();
-    cons->consumer_write_try_info_to_file();
     if (should_consumer_wait()) {
-        sleep(timeout);
         consumer_wait();
     }
+    cons->consumer_write_try_info_to_file();
+    sleep(timeout);
     if (store_state - cons->get_batch() < 0) {
         consumer_failures++;
         if (should_producer_signal()) {
@@ -83,11 +76,8 @@ bool Monitor::get(consumer* cons) {
         }
         sleep(timeout);
         cons->consumer_write_to_file(get_state(), false);
-        sleep(timeout);
-        leave();
         return false;
     }
-    sleep(timeout);
     store_state -= cons->get_batch();
     write_state_to_file();
     cons->consumer_write_to_file(get_state(), true);
@@ -98,18 +88,14 @@ bool Monitor::get(consumer* cons) {
         consumer_signal();
     }
     consumer_failures = 0;
-    leave();
     return true;
 }
 
 void Monitor::write_state_to_file() {
-    std::ofstream file("warehouse.txt");
-    if (file.is_open()) {
-        file << store_state << "\n";
-        file.flush();
-    } else {
-        std::cerr << "Error opening file for writing: warehouse.txt" << std::endl;
-    }
+    FILE *file = fopen("warehouse.txt", "w");
+    fprintf(file, "%d\n", store_state);
+    fflush(file);
+    fclose(file);
 }
 
 int Monitor::get_state() {
@@ -137,7 +123,6 @@ void Monitor::producer_wait() {
     producers_waiting++;
     leave();
     sem_wait(&producer_cond);
-    enter();
     producers_waiting--;
 }
 
@@ -145,16 +130,17 @@ void Monitor::consumer_wait() {
     consumers_waiting++;
     leave();
     sem_wait(&consumer_cond);
-    enter();
     consumers_waiting--;
 }
 
 void Monitor::producer_signal() {
     if (producers_waiting > 0)
         sem_post(&producer_cond);
+    else leave();
 }
 
 void Monitor::consumer_signal() {
     if (consumers_waiting > 0)
         sem_post(&consumer_cond);
+    else leave();
 }
