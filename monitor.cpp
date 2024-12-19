@@ -50,7 +50,6 @@ bool Monitor::put (producer* prod) {
     store_state += prod->get_batch();
     write_state_to_file();
     prod->producer_write_to_file(get_state(), true);
-    sleep(timeout);
     if (should_consumer_signal()) {
         consumer_signal();
     } else {
@@ -81,7 +80,6 @@ bool Monitor::get (consumer* cons) {
     store_state -= cons->get_batch();
     write_state_to_file();
     cons->consumer_write_to_file(get_state(), true);
-    sleep(timeout);
     if (should_producer_signal()) {
         producer_signal();
     } else {
