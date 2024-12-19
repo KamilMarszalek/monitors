@@ -1,6 +1,6 @@
 CC = g++
 CFLAGS = -Wall -g -pthread
-LDFLAGS = -lm -pthread
+LDFLAGS = -lm
 
 all: main
 

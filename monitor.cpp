@@ -6,9 +6,6 @@
 #include <fstream>
 
 Monitor::Monitor(int capacity, int producer_count, int consumer_count, int timeout) : capacity(capacity), producer_count(producer_count), consumer_count(consumer_count), timeout(timeout) {
-    sem_init(&mutex, 0, 1);
-    sem_init(&producer_cond, 0, 0);
-    sem_init(&consumer_cond, 0, 0);
     store_state = 0;
     producers_waiting = 0;
     consumers_waiting = 0;
@@ -18,87 +15,72 @@ Monitor::Monitor(int capacity, int producer_count, int consumer_count, int timeo
 }
 
 Monitor::~Monitor() {
-    sem_destroy(&mutex);
-    sem_destroy(&producer_cond);
-    sem_destroy(&consumer_cond);
-}
-
-void Monitor::enter() {
-    sem_wait(&mutex);
-}
-
-void Monitor::leave() {
-    sem_post(&mutex);
 }
 
 bool Monitor::put(producer* prod) {
-    enter();
-    prod->producer_write_try_info_to_file();
+    std::unique_lock<std::mutex> lk(m);
     if (should_producer_wait()) {
-        sleep(timeout);
-        producer_wait();
+        producers_waiting++;
+        producer_cv.wait(lk);
+        producers_waiting--;
     }
+    prod->producer_write_try_info_to_file();
     sleep(timeout);
     if (store_state + prod->get_batch() > capacity) {
         producer_failures++;
         if (should_consumer_signal()){
-            consumer_signal();
+            consumer_cv.notify_one();
         } else {
-            producer_signal();
+            producer_cv.notify_one();
         }
         sleep(timeout);
         prod->producer_write_to_file(get_state(), false);
         sleep(timeout);
-        leave(); // d
         return false;
     }
     sleep(timeout);
     store_state += prod->get_batch();
     write_state_to_file();
     prod->producer_write_to_file(get_state(), true);
-    sleep(timeout);
     if (should_consumer_signal()) {
-        consumer_signal();
+        consumer_cv.notify_one();
     } else {
-        producer_signal();
+        producer_cv.notify_one();
     }
     producer_failures = 0;
-    leave();
     return true;
 }
 
 bool Monitor::get(consumer* cons) {
-    enter();
-    cons->consumer_write_try_info_to_file();
+    std::unique_lock<std::mutex> lk(m);
     if (should_consumer_wait()) {
-        sleep(timeout);
-        consumer_wait();
+        consumers_waiting++;
+        consumer_cv.wait(lk);
+        consumers_waiting--;
     }
+    cons->consumer_write_try_info_to_file();
     if (store_state - cons->get_batch() < 0) {
         consumer_failures++;
         if (should_producer_signal()) {
-            producer_signal();
+            producer_cv.notify_one();
         } else {
-            consumer_signal();
+            consumer_cv.notify_one();
         }
         sleep(timeout);
         cons->consumer_write_to_file(get_state(), false);
         sleep(timeout);
-        leave();
         return false;
     }
     sleep(timeout);
     store_state -= cons->get_batch();
     write_state_to_file();
     cons->consumer_write_to_file(get_state(), true);
-    sleep(timeout);
     if (should_producer_signal()) {
-        producer_signal();
+        producer_cv.notify_one();
     } else {
-        consumer_signal();
+        consumer_cv.notify_one();
     }
     consumer_failures = 0;
-    leave();
     return true;
 }
 
@@ -118,7 +100,7 @@ int Monitor::get_state() {
 
 
 bool Monitor::should_producer_wait() {
-    return store_state > capacity / 2 && producers_waiting + consumers_waiting < producer_count + consumer_count - 1;
+    return (store_state > capacity / 2 && producers_waiting + consumers_waiting < producer_count + consumer_count - 1);
 }
 
 bool Monitor::should_consumer_wait() {
@@ -130,31 +112,5 @@ bool Monitor::should_producer_signal() {
 }
 
 bool Monitor::should_consumer_signal() {
-    return store_state > capacity / 2;
-}
-
-void Monitor::producer_wait() {
-    producers_waiting++;
-    leave();
-    sem_wait(&producer_cond);
-    enter();
-    producers_waiting--;
-}
-
-void Monitor::consumer_wait() {
-    consumers_waiting++;
-    leave();
-    sem_wait(&consumer_cond);
-    enter();
-    consumers_waiting--;
-}
-
-void Monitor::producer_signal() {
-    if (producers_waiting > 0)
-        sem_post(&producer_cond);
-}
-
-void Monitor::consumer_signal() {
-    if (consumers_waiting > 0)
-        sem_post(&consumer_cond);
+    return store_state > capacity / 2 || producer_failures > 2 * producer_count;
 }
