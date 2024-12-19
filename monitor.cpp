@@ -19,7 +19,7 @@ Monitor::~Monitor() {
 
 bool Monitor::put(producer* prod) {
     std::unique_lock<std::mutex> lk(m);
-    if (should_producer_wait()) {
+    while (should_producer_wait()) {
         producers_waiting++;
         producer_cv.wait(lk);
         producers_waiting--;
@@ -53,7 +53,7 @@ bool Monitor::put(producer* prod) {
 
 bool Monitor::get(consumer* cons) {
     std::unique_lock<std::mutex> lk(m);
-    if (should_consumer_wait()) {
+    while (should_consumer_wait()) {
         consumers_waiting++;
         consumer_cv.wait(lk);
         consumers_waiting--;
@@ -100,11 +100,13 @@ int Monitor::get_state() {
 
 
 bool Monitor::should_producer_wait() {
-    return (store_state > capacity / 2 && producers_waiting + consumers_waiting < producer_count + consumer_count - 1);
+    return (store_state > capacity / 2) && (producers_waiting + consumers_waiting < producer_count + consumer_count - 1)
+        && (consumer_failures <= 2 * consumer_count);
 }
 
 bool Monitor::should_consumer_wait() {
-    return store_state <= capacity / 2 && producers_waiting + consumers_waiting < producer_count + consumer_count - 1;
+    return (store_state <= capacity / 2) && (producers_waiting + consumers_waiting < producer_count + consumer_count - 1)
+        && (producer_failures <= 2 * producer_count);
 }
 
 bool Monitor::should_producer_signal() {
