@@ -116,7 +116,7 @@ bool Monitor::should_producer_signal() {
 }
 
 bool Monitor::should_consumer_signal() {
-    return store_state > capacity / 2;
+    return store_state > capacity / 2 || producer_failures > 2 * producer_count;
 }
 
 void Monitor::producer_wait() {
