@@ -35,10 +35,8 @@ bool Monitor::put(producer* prod) {
         }
         sleep(timeout);
         prod->producer_write_to_file(get_state(), false);
-        sleep(timeout);
         return false;
     }
-    sleep(timeout);
     store_state += prod->get_batch();
     write_state_to_file();
     prod->producer_write_to_file(get_state(), true);
@@ -59,6 +57,7 @@ bool Monitor::get(consumer* cons) {
         consumers_waiting--;
     }
     cons->consumer_write_try_info_to_file();
+    sleep(timeout);
     if (store_state - cons->get_batch() < 0) {
         consumer_failures++;
         if (should_producer_signal()) {
@@ -68,10 +67,8 @@ bool Monitor::get(consumer* cons) {
         }
         sleep(timeout);
         cons->consumer_write_to_file(get_state(), false);
-        sleep(timeout);
         return false;
     }
-    sleep(timeout);
     store_state -= cons->get_batch();
     write_state_to_file();
     cons->consumer_write_to_file(get_state(), true);

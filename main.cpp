@@ -17,6 +17,7 @@ void producer_thread(ThreadArgs* args) {
     bool status = true;
 
     while (true) {
+        sleep(1);
         if (status) {
             prod->produce();
             prod->producer_write_produced_to_file();
@@ -33,6 +34,7 @@ void consumer_thread(ThreadArgs* args) {
     bool status = true;
 
     while (true) {
+        sleep(1);
         if (status) {
             cons->consume();
             cons->consumer_write_consume_to_file();
